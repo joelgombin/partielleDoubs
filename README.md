@@ -1,0 +1,2 @@
+Code et données utilisés pour estimer les reports de voix lors de l'élection législative partielle dans la 4e circonscription du Doubs, en février 2015.
+La méthode est explicitée dans [ce billet](http://www.joelgombin.fr/estimation-des-reports-de-voix-explications-techniques/).
