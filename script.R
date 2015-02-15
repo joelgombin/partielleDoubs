@@ -1,31 +1,36 @@
-library("dplyr")
-data <- read.csv("resulttsBVT12.csv", sep = ";", stringsAsFactors = FALSE)
-data <- data %>% mutate(Abstention.T1 = Inscrits.T1 - Votants.T1,
-                        Abstention.T2 = Inscrits.T2 - Votants.T2,
-                        BN.T1 = Blancs + Nuls,
-                        BN.T2 = Blancs.T2 + Nuls.T2)
-data <- data %>% mutate(deltaVotants = Votants.T2 - Votants.T1,
-                        deltaExprimés = `Exprimés.T2` - `Exprimés`)
-data <- data %>% mutate(Abstention.T1.ins = Abstention.T1 / Inscrits.T1 * 100,
-                        BN.T1.ins = BN.T1 / Inscrits.T1 * 100,
-                        Barbier.ins = Barbier / Inscrits.T1 * 100,
-                        Montel.ins = Montel / Inscrits.T1 * 100,
-                        Demouge.ins = Demouge / Inscrits.T1 * 100,
-                        Autres.ins = (Bonnot + Vinci + O + Boudjekada + Adami + Treppo + Lachambre + Hervé + Rousseaux + Sanchez) / Inscrits.T1 * 100,
-                        Autres = Bonnot + Vinci + O + Boudjekada + Adami + Treppo + Lachambre + Hervé + Rousseaux + Sanchez,
-                        Abstention.T2.ins = Abstention.T2 / Inscrits.T2 * 100,
-                        BN.T2.ins = BN.T2 / Inscrits.T2 * 100,
-                        Montel.T2.ins = Montel.T2 / Inscrits.T2 * 100,
-                        Barbier.T2.ins = Barbier.T2 / Inscrits.T2 * 100)
+library(Hmisc)
+library(dplyr)
+library(ggplot2)
+library(eiPack)
+# evite pb avec summarize de Hmisc
+unloadNamespace('Hmisc')
+
+read.csv("~/ipn/data/resulttsBVT12.csv", sep = ";", stringsAsFactors = FALSE) %>%
+  mutate(
+    Abstention.T1 = Inscrits.T1 - Votants.T1,
+    Abstention.T2 = Inscrits.T2 - Votants.T2,
+    BN.T1 = Blancs + Nuls,
+    BN.T2 = Blancs.T2 + Nuls.T2,
+    Votants.T2 - Votants.T1,
+    deltaExprimés = Exprimés.T2 - Exprimés,
+    Abstention.T1.ins = Abstention.T1 / Inscrits.T1 * 100,
+    BN.T1.ins = BN.T1 / Inscrits.T1 * 100,
+    Barbier.ins = Barbier / Inscrits.T1 * 100,
+    Montel.ins = Montel / Inscrits.T1 * 100,
+    Demouge.ins = Demouge / Inscrits.T1 * 100,
+    Autres.ins = (Bonnot + Vinci + O + Boudjekada + Adami + Treppo + Lachambre + Hervé + Rousseaux + Sanchez) / Inscrits.T1 * 100,
+    Autres = Bonnot + Vinci + O + Boudjekada + Adami + Treppo + Lachambre + Hervé + Rousseaux + Sanchez,
+    Abstention.T2.ins = Abstention.T2 / Inscrits.T2 * 100,
+    BN.T2.ins = BN.T2 / Inscrits.T2 * 100,
+    Montel.T2.ins = Montel.T2 / Inscrits.T2 * 100,
+    Barbier.T2.ins = Barbier.T2 / Inscrits.T2 * 100
+  ) -> data
+
 reg1 <- lm(Montel.T2.ins ~ 0 + Abstention.T1.ins + BN.T1.ins + Montel.ins + Barbier.ins + Demouge.ins + Autres.ins, data = data, weights = data$Inscrits)
 reg2 <- lm(Barbier.T2.ins ~ 0 + Abstention.T1.ins + BN.T1.ins + Montel.ins + Barbier.ins + Demouge.ins + Autres.ins, data = data, weights = data$Inscrits)
 reg3 <- lm(BN.T2.ins ~ 0 + Abstention.T1.ins + BN.T1.ins + Montel.ins + Barbier.ins + Demouge.ins + Autres.ins, data = data, weights = data$Inscrits)
 reg4 <- lm(Abstention.T2.ins ~ 0 + Abstention.T1.ins + BN.T1.ins + Montel.ins + Barbier.ins + Demouge.ins + Autres.ins, data = data, weights = data$Inscrits)
 
-library(texreg)
-screenreg(list(reg1, reg2, reg3, reg4))
-
-library("ggplot2")
 data %>% 
   ggplot(aes(x = Demouge.ins, y = Montel.T2.ins - Montel.ins)) +
   geom_point()
@@ -42,33 +47,19 @@ data %>%
   ggplot(aes(x = Demouge.ins, y = Abstention.T2.ins - Abstention.T1.ins)) +
   geom_point()
 
-library(ei)
 formula <- cbind(Montel.T2, Barbier.T2, BN.T2, Abstention.T2) ~ cbind(Abstention.T1, BN.T1, Demouge, Montel, Barbier, Autres)
-dbuf <- ei(formula, data=data, sample=50000, burnin=5000, total = "Inscrits.T1")
-# on crée une matrice pour stocker les estimations
-#tour1 <- c("Abstention", "Blancs et nuls", "Demouge (UMP)", "Montel (FN)", "Barbier (PS)", "Autres")
+dbuf <- ei.MD.bayes(formula, data=data, sample=100000, burnin=10000, total = "Inscrits.T1")
+
 tour1 <- c("Abstention.T1", "BN.T1", "Demouge", "Montel", "Barbier", "Autres")
-#tour2 <- c("Montel (FN)", "Barbier (PS)", "Blancs et nuls", "Abstention")
 tour2 <- c("Montel.T2", "Barbier.T2", "BN.T2", "Abstention.T2")
-df <- array(dim=c(length(tour1), length(tour2)))
-dimnames(df)[[1]] <- tour1
-dimnames(df)[[2]] <- tour2
+bureau <- 1:96
 
-# calcul des estimations moyennes 
-for (i in tour1) {
-  for (j in tour2) {
-    df[i,j] <- weighted.mean(colMeans(dbuf$draws$Beta[,paste("beta.", i, ".", j,".", 1:96, sep="")]), data$Inscrits.T1)
-  }
-}
+df1 <- expand.grid(tour1=tour1, tour2=tour2, bureau=bureau)
+df1$taux <- colMeans(dbuf$draws$Beta[,paste("beta.", df1$tour1, ".", df1$tour2, ".", df1$bureau, sep="")])
+df1$tot <- data$Inscrits.T1[df1$bureau]
 
-# calcul des écarts-types
-df2 <- array(dim=c(length(tour1), length(tour2)))
-dimnames(df2)[[1]] <- tour1
-dimnames(df2)[[2]] <- tour2
-
-for (i in tour1) {
-  for (j in tour2) {
-    df2[i,j] <- sqrt(Hmisc::wtd.var(summary(dbuf$draws$Beta[,paste("beta.",i,".",j,".",1:96, sep="")])$statistics[,1], data$Inscrits.T1))
-  }
-}
-
+df1 %>%
+  group_by(tour1, tour2) %>%
+  summarize(
+    moy = Hmisc::wtd.mean(taux, weights=tot),
+    var = Hmisc::wtd.var(taux, weights=tot)) -> df2
